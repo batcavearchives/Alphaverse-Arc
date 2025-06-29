@@ -154,18 +154,25 @@ async def whitelist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         threshold = int(context.args[0])
     except:
         return await update.message.reply_text("Usage: /whitelist <min_points>")
-    conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
-        "SELECT username FROM user_points WHERE points >= ? ORDER BY points DESC",
+        "SELECT user_id, username FROM user_points WHERE points >= ? ORDER BY points DESC",
         (threshold,),
     )
-    users = [r[0] for r in c.fetchall()]
+    rows = c.fetchall()  # list of (user_id, username)
     conn.close()
-    if users:
-        await update.message.reply_text("✅ Whitelisted Users:\n" + "\n".join(users))
-    else:
-        await update.message.reply_text("No users meet that threshold yet.")
+
+    if not rows:
+        return await update.message.reply_text("No users meet that threshold yet.")
+
+    # Build HTML mentions: <a href="tg://user?id=UID">@username</a>
+    mentions = [
+        f'<a href="tg://user?id={uid}">@{uname}</a>'
+        for uid, uname in rows
+    ]
+    text = "✅ Whitelisted Users:\n" + "\n".join(mentions)
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 # --- Main entrypoint ---
 def main():
