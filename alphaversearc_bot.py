@@ -104,16 +104,30 @@ async def createpoll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         allows_multiple_answers=False,
     )
     # Store poll_id in context so we can filter answers
-    context.chat_data[poll_message.poll.id] = True
+        # ensure we have a dict for active polls
+    if "active_polls" not in context.bot_data:
+        context.bot_data["active_polls"] = set()
+
+    # store this poll’s ID globally
+    context.bot_data["active_polls"].add(poll_message.poll.id)
+
 
 async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = update.poll_answer
-    pid = answer.poll_id
-    uid = answer.user.id
-    if pid in context.chat_data and not has_answered(pid, uid):
+    pid = update.poll_answer.poll_id
+    uid = update.poll_answer.user.id
+    # Only award points for polls we created
+    active = context.bot_data.get("active_polls", set())
+    if pid not in active:
+        return
+
+    # If they haven't answered this poll before, give them points
+    if not has_answered(pid, uid):
         mark_answered(pid, uid)
-        add_point(uid, answer.user.username or answer.user.first_name)
+        add_point(uid, update.poll_answer.user.username or update.poll_answer.user.first_name)
         logger.info(f"Awarded {POINTS_PER_POLL} point to {uid}")
+    else:
+        logger.debug(f"User {uid} already answered poll {pid}")
 
 async def score(update: Update, _: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
