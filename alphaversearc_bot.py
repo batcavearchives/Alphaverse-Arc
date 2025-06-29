@@ -166,11 +166,8 @@ async def whitelist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not rows:
         return await update.message.reply_text("No users meet that threshold yet.")
 
-    # Build HTML mentions: <a href="tg://user?id=UID">@username</a>
-    mentions = [
-        f'<a href="tg://user?id={uid}">@{uname}</a>'
-        for uid, uname in rows
-    ]
+    # Build safe HTML mentions without the leading "@"
+    mentions = [mention_html(uid, uname) for uid, uname in rows]
     text = "✅ Whitelisted Users:\n" + "\n".join(mentions)
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
